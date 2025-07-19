@@ -1,0 +1,33 @@
+# airflow-dags-pvc.tpl.yaml
+# {{ $dagPath := .Environment.Values.dagHostPath }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: airflow-dags-pv
+spec:
+  # labels:
+  #   type: local
+  capacity:
+    storage: 20Gi
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /run/desktop/mnt/host/c/Users/chapo/Documents/repos/KafkaKubeML/dags/
+    # path: {{ $dagPath | quote }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: airflow-dags-pvc
+  # labels:
+  #   type: ReadWriteMany
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: airflow-dags-pv
