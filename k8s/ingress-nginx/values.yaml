@@ -1,0 +1,31 @@
+controller:
+  replicaCount: 1
+
+  service:
+    type: NodePort         # overridden by helmfile
+    nodePorts:
+      http: 30080          # overridden by helmfile
+      https: 32443         # overridden by helmfile
+    externalTrafficPolicy: Local
+
+  ingressClassResource:
+    name: nginx
+    enabled: true
+    default: true
+
+  metrics:
+    enabled: false
+
+webserver:
+  defaultUser:
+    enabled: false
+    
+airflow:
+  users:
+    - username: youruser
+      password: yourpassword
+      role: Admin
+      email: your@email.com
+
+createUserJob:
+  useHelmHooks: true

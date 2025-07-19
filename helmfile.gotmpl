@@ -1,0 +1,44 @@
+environments:
+  default:
+    values:
+      - dagHostPath: "/c/Users/chapo/Documents/repos/KafkaKubeML/dags"
+---
+
+{{ $dagPath := .Environment.Values.dagHostPath }}
+
+namespace: kafka-kube-ml
+
+repositories:
+  - name: apache-airflow
+    url: https://airflow.apache.org
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+
+releases:
+  - name: ingress
+    namespace: kafka-kube-ml
+    chart: ingress-nginx/ingress-nginx
+    values:
+      - k8s/ingress-nginx/values.yaml
+    set:
+      - name: controller.service.type
+        value: NodePort
+      - name: controller.service.nodePorts.http
+        value: 30080
+      - name: controller.service.nodePorts.https
+        value: 32443
+
+  - name: airflow
+    namespace: kafka-kube-ml
+    chart: apache-airflow/airflow
+    values:
+      - k8s/airflow/values.yaml
+    hooks:
+      - events: ["apply", "sync"]
+        showlogs: true
+        command: sh
+        args:
+          - -c
+          - |
+            helmfile -f helmfile.gotmpl -e default template > /tmp/rendered.yaml
+            yq e 'select(.kind == "PersistentVolume" or .kind == "PersistentVolumeClaim")' /tmp/rendered.yaml | kubectl apply -f -
