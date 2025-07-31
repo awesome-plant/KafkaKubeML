@@ -1,0 +1,15 @@
+# kafka-namespaces.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka-stream
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka-kube-ml

@@ -1,17 +1,28 @@
-namespace: kafka-kube-ml
+# helmfile.yaml
 
 repositories:
   - name: apache-airflow
     url: https://airflow.apache.org
   - name: ingress-nginx
     url: https://kubernetes.github.io/ingress-nginx
+  - name: strimzi
+    url: https://strimzi.io/charts/
+  - name: kubernetes-dashboard
+    url: https://kubernetes.github.io/dashboard/
 
 releases:
+  # ────────────────────────────────────────
+  # 1) Ingress-NGINX
   - name: ingress
     namespace: kafka-kube-ml
     chart: ingress-nginx/ingress-nginx
     values:
+      # your existing overrides:
       - k8s/ingress-nginx/values.yaml
+      # inline injection under controller:
+      - controller:
+          nodeSelector:
+            airflow-role: worker
     set:
       - name: controller.service.type
         value: NodePort
@@ -19,12 +30,40 @@ releases:
         value: 30080
       - name: controller.service.nodePorts.https
         value: 32443
+    hooks:
+      - events: ["prepare"]
+        showlogs: true
+        command: kubectl
+        args:
+          - apply
+          - -f
+          - k8s/kafka-namespace.yaml
 
+  # ────────────────────────────────────────
+  # 2) Apache Airflow
   - name: airflow
     namespace: kafka-kube-ml
     chart: apache-airflow/airflow
     values:
+      # baseline values:
       - k8s/airflow/values.yaml
+      # explicitly enable & pin each component to your worker node:
+      - webserver:
+          enabled: true
+          nodeSelector:
+            airflow-role: worker
+      - scheduler:
+          enabled: true
+          nodeSelector:
+            airflow-role: worker
+      - worker:
+          enabled: true
+          nodeSelector:
+            airflow-role: worker
+      - triggerer:
+          enabled: true
+          nodeSelector:
+            airflow-role: worker
     hooks:
       - events: ["presync"]
         showlogs: true
@@ -33,5 +72,66 @@ releases:
           - apply
           - -f
           - k8s/airflow/airflow-dags-pvc.yaml
-          - n 
+          - -n
           - kafka-kube-ml
+
+  # ────────────────────────────────────────
+  # 3) Strimzi Kafka Operator
+  - name: kafka-operator
+    namespace: kafka-stream
+    chart: strimzi/strimzi-kafka-operator
+    version: 0.45.1
+    createNamespace: true
+    values:
+      - nodeSelector:
+          airflow-role: worker
+
+    hooks:
+      - events: ["postsync"]
+        showlogs: true
+        command: kubectl
+        args:
+          - apply
+          - -f
+          - k8s/kafka/kafka-cluster.yaml
+          - -n
+          - kafka-stream
+
+  # ────────────────────────────────────────
+  # 4) Kubernetes Dashboard
+  - name: kubernetes-dashboard
+    namespace: kubernetes-dashboard
+    chart: kubernetes-dashboard/kubernetes-dashboard
+    version: 6.0.8
+    createNamespace: true
+    values:
+      - fullnameOverride: dashboard
+      - serviceAccount:
+          create: true
+          name: admin-user
+      - nodeSelector:
+          dashboard-role: control
+      - ingress:
+          enabled: true
+          annotations:
+            nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+          hosts:
+            - dashboard.local
+          paths:
+            - /
+          pathType: Prefix
+      - extraArgs:
+          - --enable-skip-login
+          - --enable-insecure-login
+      - protocolHttp: false
+      - protocolHttps: true
+    hooks:
+      - events: ["postsync"]
+        showlogs: true
+        command: kubectl
+        args:
+          - create
+          - clusterrolebinding
+          - admin-user
+          - --clusterrole=cluster-admin
+          - --serviceaccount=kubernetes-dashboard:admin-user
