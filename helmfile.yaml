@@ -20,9 +20,9 @@ releases:
       # your existing overrides:
       - k8s/ingress-nginx/values.yaml
       # inline injection under controller:
-      - controller:
-          nodeSelector:
-            airflow-role: worker
+      # - controller:
+      #     nodeSelector:
+      #       airflow-role: worker
     set:
       - name: controller.service.type
         value: NodePort
@@ -50,20 +50,20 @@ releases:
       # explicitly enable & pin each component to your worker node:
       - webserver:
           enabled: true
-          nodeSelector:
-            airflow-role: worker
+          # nodeSelector:
+          #   airflow-role: worker
       - scheduler:
           enabled: true
-          nodeSelector:
-            airflow-role: worker
+          # nodeSelector:
+          #   airflow-role: worker
       - worker:
           enabled: true
-          nodeSelector:
-            airflow-role: worker
+          # nodeSelector:
+          #   airflow-role: worker
       - triggerer:
           enabled: true
-          nodeSelector:
-            airflow-role: worker
+          # nodeSelector:
+          #   airflow-role: worker
     hooks:
       - events: ["presync"]
         showlogs: true
@@ -82,9 +82,9 @@ releases:
     chart: strimzi/strimzi-kafka-operator
     version: 0.45.1
     createNamespace: true
-    values:
-      - nodeSelector:
-          airflow-role: worker
+    # values:
+      # - nodeSelector:
+      #     airflow-role: worker
 
     hooks:
       - events: ["postsync"]
@@ -109,8 +109,8 @@ releases:
       - serviceAccount:
           create: true
           name: admin-user
-      - nodeSelector:
-          dashboard-role: control
+      # - nodeSelector:
+      #     dashboard-role: control
       - ingress:
           enabled: true
           annotations:

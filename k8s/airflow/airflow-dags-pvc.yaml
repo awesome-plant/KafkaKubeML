@@ -14,7 +14,7 @@ spec:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   hostPath:
-    path: /run/desktop/mnt/host/c/Users/chapo/Documents/repos/KafkaKubeML/dags/
+    path: /run/desktop/mnt/host/c/Users/User/Documents/repos/KafkaKubeML/dags/
     # path: {{ $dagPath | quote }}
 ---
 apiVersion: v1
