@@ -1,7 +1,12 @@
 executor: LocalExecutor
 
 airflowImage:
+  repository: apache/airflow
   tag: 2.9.1
+
+airflow:
+  extraPipPackages:
+    - apache-airflow-providers-cncf-kubernetes==7.7.0 #this is incorrect
 
 createUserJob:
   useHelmHooks: false
@@ -19,23 +24,30 @@ webserver:
 
 ingress:
   enabled: true
-  api:
+  web:
     enabled: true
-    ingressClassName: nginx
+    ingressClassName: nginx           # <- Critical: set ingress class for web UI
     annotations:
       nginx.ingress.kubernetes.io/rewrite-target: /
     hosts:
       - name: localhost
     tls:
       enabled: false
-  web:
-    enabled: false  # must be disabled in 1.18.0+
+  api:
+    enabled: true
+    ingressClassName: nginx           # <- Critical: set ingress class for API
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+    hosts:
+      - name: localhost
+    tls:
+      enabled: false
 
 dags:
   persistence:
     enabled: true
     existingClaim: airflow-dags-pvc
-  
+
 config:
   core:
     dag_dir_list_interval: 30

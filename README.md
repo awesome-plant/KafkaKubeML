@@ -5,10 +5,10 @@ preflight
 kube instructions 
 ```
 wsl -d Ubuntu
-kubectl label node win10-agent-5609d4cd node-role.kubernetes.io/workload=true
+<!-- kubectl label node win10-agent-5609d4cd node-role.kubernetes.io/workload=true
 kubectl label node win11 node-role.kubernetes.io/dashboard=true
 kubectl label node win10-agent-5609d4cd airflow-role=worker
-kubectl label node win11            dashboard-role=control
+kubectl label node win11            dashboard-role=control -->
 kubectl create namespace kafka-kube-ml
 kubectl config set-context --current --namespace=kafka-kube-ml
 ```
@@ -27,6 +27,8 @@ helmfile destroy
 
 hard reset
 ```
+
+helmfile destroy
 for ns in kafka kafka-kube-ml kafka-stream; do
   echo "Cleaning namespace: $ns"
   kubectl api-resources \
@@ -42,6 +44,10 @@ kubectl get ns \
 | awk '$2=="Terminating"{print $1}' \
 | xargs -r -n1 kubectl patch ns --type=merge -p '{"metadata":{"finalizers":[]}}'
 
-
+helm uninstall ingress -n kafka-kube-ml
+kubectl delete validatingwebhookconfiguration ingress-nginx-admission
+kubectl delete clusterrolebinding admin-user
+kubectl delete pv airflow-dags-pv
+kubectl delete pvc airflow-dags-pvc
 
 ```

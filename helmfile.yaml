@@ -44,23 +44,24 @@ releases:
   - name: airflow
     namespace: kafka-kube-ml
     chart: apache-airflow/airflow
+    version: 1.18.0
     values:
       # baseline values:
       - k8s/airflow/values.yaml
       # explicitly enable & pin each component to your worker node:
-      - webserver:
-          enabled: true
+      # - webserver:
+      #     enabled: true
           # nodeSelector:
           #   airflow-role: worker
       - scheduler:
           enabled: true
           # nodeSelector:
           #   airflow-role: worker
-      - worker:
+        worker:
           enabled: true
           # nodeSelector:
           #   airflow-role: worker
-      - triggerer:
+        triggerer:
           enabled: true
           # nodeSelector:
           #   airflow-role: worker
@@ -74,7 +75,18 @@ releases:
           - k8s/airflow/airflow-dags-pvc.yaml
           - -n
           - kafka-kube-ml
-
+      - events: ["postsync"]
+        showlogs: true
+        command: kubectl
+        args:
+          - patch
+          - ingress
+          - airflow-ingress
+          - -n
+          - kafka-kube-ml
+          - --type=json
+          - -p
+          - '[{"op": "add", "path": "/spec/ingressClassName", "value":"nginx"}]'
   # ────────────────────────────────────────
   # 3) Strimzi Kafka Operator
   - name: kafka-operator
