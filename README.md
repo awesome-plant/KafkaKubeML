@@ -51,3 +51,8 @@ kubectl delete pv airflow-dags-pv
 kubectl delete pvc airflow-dags-pvc
 
 ```
+
+build dockerfiles
+```
+docker build -t kafkakubeml:user_simulator .
+```

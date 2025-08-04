@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
 from airflow.operators.empty import EmptyOperator
 from datetime import datetime
+import os
 
 default_args = {
     "owner": "airflow",
@@ -24,7 +25,7 @@ with DAG(
     user_simulator = KubernetesPodOperator.partial(
         task_id='user_simulator',
         namespace="default",
-        image="your-docker-registry/user-simulator:latest",
+        image="awesomeplant/user_simulator:latest",
         cmds=["python", "-m", "user_simulator.main"],
         name="user-simulator",
         get_logs=True,
@@ -32,8 +33,8 @@ with DAG(
     ).expand(
         env_vars=[
             {
-                "KAFKA_BROKERS": "kafka:9092",
-                "KAFKA_TOPIC": "user-interactions",
+                "KAFKA_BROKER": os.environ.get("KAFKA_BROKER"),
+                "KAFKA_TOPIC": os.environ.get("KAFKA_TOPIC"),
                 "WORKER_ID": str(i),
             }
             for i in range(2)
@@ -44,7 +45,7 @@ with DAG(
     kafka_consumer = KubernetesPodOperator.partial(
         task_id='kafka_consumer',
         namespace="default",
-        image="your-docker-registry/kafka-consumer:latest",
+        image="awesome-plant/kafka-consumer:latest",
         cmds=["python", "-m", "kafka_consumer.main"],
         name="kafka-consumer",
         get_logs=True,
@@ -52,8 +53,8 @@ with DAG(
     ).expand(
         env_vars=[
             {
-                "KAFKA_BROKERS": "kafka:9092",
-                "KAFKA_TOPIC": "user-interactions",
+                "KAFKA_BROKER": os.environ.get("KAFKA_BROKER"),
+                "KAFKA_TOPIC": os.environ.get("KAFKA_TOPIC"),
                 "WORKER_ID": str(i),
                 "PARQUET_OUTPUT_PATH": f"/data/out_{i}.parquet",
             }
@@ -65,7 +66,7 @@ with DAG(
     ml_worker = KubernetesPodOperator.partial(
         task_id='ml_worker',
         namespace="default",
-        image="your-docker-registry/ml-worker:latest",
+        image="awesome-plant/ml-worker:latest",
         cmds=["python", "-m", "ml_worker.main"],
         name="ml-worker",
         get_logs=True,

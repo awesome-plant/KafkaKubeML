@@ -33,7 +33,9 @@ user-simulator/
 ├── tests/
 │   ├── __init__.py
 │   ├── test_generator.py
-│   └── test_kafka_client.py
+│   └── test_main.py
+|   └── integration/
+|       └── test_kafka_end_to_end.py     # actually hits Kafka
 ├── requirements.txt
 ├── Dockerfile
 ├── README.md
@@ -49,7 +51,7 @@ pip install -r requirements.txt
 
 ### 2. **Set Environment Variables**
 
-    KAFKA_BROKERS — Comma-separated Kafka broker addresses (e.g. kafka:9092)
+    KAFKA_BROKER — Comma-separated Kafka broker addresses (e.g. kafka:9092)
 
     KAFKA_TOPIC — Target Kafka topic for events (e.g. user-interactions)
 
@@ -74,7 +76,7 @@ Docker Usage
 ### Build and run with Docker:
 ```
 docker build -t user-simulator .
-docker run --env KAFKA_BROKERS=kafka:9092 --env KAFKA_TOPIC=user-interactions user-simulator
+docker run --env KAFKA_BROKER=kafka:9092 --env KAFKA_TOPIC=user-interactions user-simulator
 ```
 ### Development & Extending
 

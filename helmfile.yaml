@@ -49,6 +49,10 @@ releases:
       - extraEnv: |
           - name: AIRFLOW_VAR_NAMESPACE
             value: "{{ .Namespace }}"
+          - name: KAFKA_BROKER
+            value: kafka-cluster-kafka-bootstrap.kafka-stream:9092
+          - name: KAFKA_TOPIC
+            value: user-interactions
       # baseline values:
       - k8s/airflow/values.yaml
           # nodeSelector:
