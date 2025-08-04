@@ -3,11 +3,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY . . 
+# requirements.txt .
+RUN ls -l /app
+RUN ls -l /app/src
+RUN ls -l /app/src/user-simulator || echo "user_simulator not found"
 
-COPY . .
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt 
+RUN pip install -e .
 
-# docker build -t kafkakubeml:user_simulator .
+# docker build -t user-simulator:latest .
+# awesome-plant/user-simulator:latest
 
-# CMD ["python", "generate.py"]
+CMD ["python", "-m", "user_simulator.main"]

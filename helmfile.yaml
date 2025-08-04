@@ -46,11 +46,11 @@ releases:
     chart: apache-airflow/airflow
     version: 1.18.0
     values:
+      - extraEnv: |
+          - name: AIRFLOW_VAR_NAMESPACE
+            value: "{{ .Namespace }}"
       # baseline values:
       - k8s/airflow/values.yaml
-      # explicitly enable & pin each component to your worker node:
-      # - webserver:
-      #     enabled: true
           # nodeSelector:
           #   airflow-role: worker
       - scheduler:

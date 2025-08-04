@@ -51,3 +51,7 @@ dags:
 config:
   core:
     dag_dir_list_interval: 30
+
+# env:
+#   - name: AIRFLOW_NAMESPACE
+#     value: '{{ .Values.env.AIRFLOW_NAMESPACE | quote }}''
