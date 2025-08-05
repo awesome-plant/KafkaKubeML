@@ -22,6 +22,15 @@ webserver:
   service:
     type: NodePort
 
+worker:
+  extraVolumeMounts:
+    - name: parquet-data
+      mountPath: /data/parquet
+  extraVolumes:
+    - name: parquet-data
+      persistentVolumeClaim:
+        claimName: consumer-parquet-pvc
+
 ingress:
   enabled: true
   web:

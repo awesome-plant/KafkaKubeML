@@ -8,8 +8,8 @@ from kafka import KafkaConsumer, TopicPartition
 from kafka.errors import KafkaError
 from kafka.admin import KafkaAdminClient, NewTopic
 from user_simulator.kafka_client import create_kafka_producer, send_event, wait_for_topic, ensure_topic_exists
+import os
 
-@pytest.fixture(scope="module")
 brokers = os.environ.get("KAFKA_BROKER")
 topic = os.environ.get("KAFKA_TOPIC")
 # brokers = "kafka-cluster-kafka-bootstrap.kafka-stream:9092"

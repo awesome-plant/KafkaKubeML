@@ -17,12 +17,7 @@ releases:
     namespace: kafka-kube-ml
     chart: ingress-nginx/ingress-nginx
     values:
-      # your existing overrides:
       - k8s/ingress-nginx/values.yaml
-      # inline injection under controller:
-      # - controller:
-      #     nodeSelector:
-      #       airflow-role: worker
     set:
       - name: controller.service.type
         value: NodePort
@@ -38,7 +33,6 @@ releases:
           - apply
           - -f
           - k8s/kafka-namespace.yaml
-
   # ────────────────────────────────────────
   # 2) Apache Airflow
   - name: airflow
@@ -53,22 +47,17 @@ releases:
             value: kafka-cluster-kafka-bootstrap.kafka-stream:9092
           - name: KAFKA_TOPIC
             value: user-interactions
-      # baseline values:
+          - name: PARQUET_DIR 
+            value: /data/parquet
+          - name: BATCH_SIZE 
+            value: "100"
       - k8s/airflow/values.yaml
-          # nodeSelector:
-          #   airflow-role: worker
       - scheduler:
           enabled: true
-          # nodeSelector:
-          #   airflow-role: worker
         worker:
           enabled: true
-          # nodeSelector:
-          #   airflow-role: worker
         triggerer:
           enabled: true
-          # nodeSelector:
-          #   airflow-role: worker
     hooks:
       - events: ["presync"]
         showlogs: true
@@ -98,10 +87,6 @@ releases:
     chart: strimzi/strimzi-kafka-operator
     version: 0.45.1
     createNamespace: true
-    # values:
-      # - nodeSelector:
-      #     airflow-role: worker
-
     hooks:
       - events: ["postsync"]
         showlogs: true
@@ -112,7 +97,6 @@ releases:
           - k8s/kafka/kafka-cluster.yaml
           - -n
           - kafka-stream
-
   # ────────────────────────────────────────
   # 4) Kubernetes Dashboard
   - name: kubernetes-dashboard
@@ -125,8 +109,6 @@ releases:
       - serviceAccount:
           create: true
           name: admin-user
-      # - nodeSelector:
-      #     dashboard-role: control
       - ingress:
           enabled: true
           annotations:
@@ -151,3 +133,20 @@ releases:
           - admin-user
           - --clusterrole=cluster-admin
           - --serviceaccount=kubernetes-dashboard:admin-user
+  # 5) PVC for Kafka Consumer
+  # This step ensures the PVC is created for the Python Kafka Consumer to write parquet files.
+  # - name: consumer-parquet-pvc
+  #   namespace: kafka-kube-ml
+  #   chart: "bitnami/common" # dummy chart just to run the hook, won't actually install anything
+  #   version: 2.7.1
+  #   disableValidationOnInstall: true
+hooks:
+  - events: ["prepare"]
+    showlogs: true
+    command: kubectl
+    args:
+      - apply
+      - -f
+      - k8s/consumer/consumer-pvc.yaml
+      - -n
+      - kafka-kube-ml

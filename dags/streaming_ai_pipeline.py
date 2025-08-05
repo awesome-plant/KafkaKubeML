@@ -43,20 +43,22 @@ with DAG(
 
     # Step 2: Kafka Consumer (mapping over env_vars)
     kafka_consumer = KubernetesPodOperator.partial(
-        task_id='kafka_consumer',
+        task_id='stream_processor',
         namespace="default",
-        image="awesome-plant/kafka-consumer:latest",
-        cmds=["python", "-m", "kafka_consumer.main"],
-        name="kafka-consumer",
+        image="awesome-plant/kafka-stream_processor:latest",
+        cmds=["python", "-m", "stream_processor.main"],
+        name="stream-processor",
         get_logs=True,
         is_delete_operator_pod=True,
     ).expand(
         env_vars=[
             {
                 "KAFKA_BROKER": os.environ.get("KAFKA_BROKER"),
-                "KAFKA_TOPIC": os.environ.get("KAFKA_TOPIC"),
+                "KAFKA_TOPIC":  os.environ.get("KAFKA_TOPIC"),
+                "PARQUET_DIR":  os.environ.get("PARQUET_DIR"),
+                "BATCH_SIZE":   os.environ.get("BATCH_SIZE"),
                 "WORKER_ID": str(i),
-                "PARQUET_OUTPUT_PATH": f"/data/out_{i}.parquet",
+                "PARQUET_OUTPUT_PATH": f"""/{os.environ.get("BATCH_SIZE")}/out_{i}.parquet""",
             }
             for i in range(2)
         ]
