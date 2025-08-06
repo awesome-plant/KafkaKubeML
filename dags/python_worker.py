@@ -1,10 +1,26 @@
 from airflow import DAG
-from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
 from airflow.operators.empty import EmptyOperator
+from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
+from kubernetes.client import V1Volume, V1PersistentVolumeClaimVolumeSource, V1VolumeMount
 from datetime import datetime
 from airflow.models import Variable
 from airflow.utils.task_group import TaskGroup
 import os
+
+
+
+parquet_volume = V1Volume(
+    name="parquet-data",
+    persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
+        claim_name="consumer-parquet-pvc"
+    )
+)
+
+parquet_volume_mount = V1VolumeMount(
+    name="parquet-data",
+    mount_path="/data/parquet",
+    read_only=False
+)
 
 default_args = {
     "owner": "airflow",
@@ -44,6 +60,8 @@ with DAG(
             image="awesomeplant/stream_processor:latest",
             cmds=["sleep", "9999999"],         # Run sleep, not the Python script
             name="stream_processor-demo",
+            volumes=[parquet_volume],
+            volume_mounts=[parquet_volume_mount],
             get_logs=True,
             is_delete_operator_pod=True,
             env_vars={

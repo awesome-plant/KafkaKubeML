@@ -1,4 +1,4 @@
-aimport os
+import os
 import json
 import pandas as pd
 from kafka import KafkaConsumer

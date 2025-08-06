@@ -10,7 +10,7 @@ spec:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   hostPath:
-    path: /run/desktop/mnt/host/c/Users/temp/parquet_dir/
+    path: /run/desktop/mnt/host/c/Users/User/temp/parquet_dir/
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
