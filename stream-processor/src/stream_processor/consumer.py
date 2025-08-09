@@ -3,14 +3,13 @@ import json
 import pandas as pd
 from kafka import KafkaConsumer
 
-KAFKA_BROKER = os.environ.get("KAFKA_BROKER", "kafka-cluster-kafka-bootstrap.kafka-stream:9092")
-KAFKA_TOPIC = os.environ.get("KAFKA_TOPIC", "user-interactions")
-PARQUET_DIR = os.environ.get("PARQUET_DIR", "/data/parquet")
-BATCH_SIZE = int(os.environ.get("BATCH_SIZE", 100))
-
-os.makedirs(PARQUET_DIR, exist_ok=True)
-
 def main():
+    KAFKA_BROKER = os.environ.get("KAFKA_BROKER", "kafka-cluster-kafka-bootstrap.kafka-stream:9092")
+    KAFKA_TOPIC = os.environ.get("KAFKA_TOPIC", "user-interactions")
+    PARQUET_DIR = os.environ.get("PARQUET_DIR", "/data/parquet")
+    BATCH_SIZE = int(os.environ.get("BATCH_SIZE", 100))
+    os.makedirs(PARQUET_DIR, exist_ok=True)
+
     consumer = KafkaConsumer(
         KAFKA_TOPIC,
         bootstrap_servers=KAFKA_BROKER,
