@@ -1,0 +1,7 @@
+# charts/stream_processor/Chart.yaml
+apiVersion: v2
+name: stream-processor
+description: Parquet consumer (Kafka -> PVC)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

@@ -1,20 +1,28 @@
+
+
+# stream-processor/pyproject.toml
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "user_simulator"
+name = "stream-processor"
 version = "0.1.0"
-description = "Fake user event generator for streaming demo. part of larger build done"
+description = "Kafka consumer that writes Parquet partitions"
+readme = "README.md"
+requires-python = ">=3.9"
 authors = [
     { name = "awesome-plant", email = "drakazaka@hotmail.com" }
 ]
-readme = "README.md"
-requires-python = ">=3.9"
 dependencies = [
-    "faker",
-    "kafka-python"
+  "confluent-kafka==2.4.0",
+  "pandas==2.2.2",
+  "pyarrow==16.1.0",
+  "python-dateutil==2.9.0.post0"
 ]
+
+[project.optional-dependencies]
+dev = ["pytest"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

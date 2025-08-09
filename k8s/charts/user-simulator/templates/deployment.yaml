@@ -1,0 +1,95 @@
+# charts/user-simulator/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-simulator
+  namespace: {{ .Release.Namespace }}
+  labels: { app: user-simulator }
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels: { app: user-simulator }
+  template:
+    metadata:
+      labels: { app: user-simulator }
+    spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      initContainers:
+        # - name: wait-for-kafka
+        #   image: busybox:1.36
+        #   command: ["sh","-c"]
+        #   args:
+        #     - |
+        #       set -e
+        #       until nslookup kafka-cluster-kafka-bootstrap.kafka-stream.svc; do
+        #         echo "waiting for DNS…"; sleep 3
+        #       done
+        #       # Optional: also wait for port
+        #       until nc -z kafka-cluster-kafka-bootstrap.kafka-stream.svc 9092; do
+        #         echo "waiting for broker…"; sleep 3
+        #       done
+        - name: preflight-tests
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: user-simulator-config
+          env:
+            - name: TMPDIR
+              value: /tmp
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -eu
+              echo "[preflight] running smoke tests…"
+              pytest -q -k "smoke or preflight" --maxfail=1 --disable-warnings
+              python - <<'PY'
+              import os
+              from confluent_kafka import Producer
+              b=os.environ.get("KAFKA_BROKERS","")
+              if not b: raise SystemExit("KAFKA_BROKERS is empty")
+              p=Producer({"bootstrap.servers":b})
+              md=p.list_topics(timeout=5)
+              print("[preflight] connected to", b, "topics:", len(md.topics))
+              PY
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+      containers:
+        - name: user-simulator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: user-simulator-config
+          ports:
+            - name: http
+              containerPort: {{ .Values.generator.metricsPort }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          env:
+            - name: TMPDIR
+              value: /tmp
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu | quote }}
+              memory: {{ .Values.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+              memory: {{ .Values.resources.limits.memory | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true

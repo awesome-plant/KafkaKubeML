@@ -1,0 +1,14 @@
+# k8s/generator/generator-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-simulator-config
+  # namespace: kafka-kube-ml
+data:
+  KAFKA_BROKERS: "kafka-cluster-kafka-bootstrap.kafka-stream.svc:9092"
+  KAFKA_TOPIC: "user-interactions"
+  RATE: "100"                  # events/sec per pod; tune for ±10x
+  BATCH_SIZE: "100"
+  PAYLOAD_BYTES: "300"
+  KEY_PREFIX: "user-"
+  LOG_LEVEL: "INFO"

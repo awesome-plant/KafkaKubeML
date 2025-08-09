@@ -1,0 +1,90 @@
+# k8s/generator/generator-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-simulator
+  # namespace: kafka-kube-ml
+  labels:
+    app: user-simulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-simulator
+  template:
+    metadata:
+      labels: 
+        app: user-simulator
+    spec:
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory           # or omit for disk-backed
+            sizeLimit: 256Mi
+      initContainers:
+        - name: preflight-tests
+          image: awesomeplant/user_simulator:latest  # must include pytest + confluent-kafka
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: user-simulator-config
+          command: ["sh","-c"]
+          args:
+            - |
+              set -eu
+              echo "[preflight] running smoke tests…"
+              pytest -q -k "smoke or preflight" --maxfail=1 --disable-warnings
+              python - <<'PY'
+              import os
+              from confluent_kafka import Producer
+              broker=os.environ.get("KAFKA_BROKERS","")
+              if not broker:
+                  raise SystemExit("KAFKA_BROKERS is empty")
+              p=Producer({"bootstrap.servers": broker})
+              md=p.list_topics(timeout=5)
+              print("[preflight] connected to", broker, "topics:", len(md.topics))
+              PY
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          env:
+            - name: TMPDIR
+              value: /tmp
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: user-simulator
+          image: awesomeplant/user_simulator:latest # <— set your image
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: user-simulator-config
+          ports:
+            - name: http
+              containerPort: 8000                     # optional (/metrics,/healthz)
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false #true
+          env:
+            - name: TMPDIR
+              value: /tmp
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      # securityContext:
+      #   runAsNonRoot: true

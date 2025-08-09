@@ -1,8 +1,8 @@
 # helmfile.yaml
 
 repositories:
-  - name: apache-airflow
-    url: https://airflow.apache.org
+  # - name: apache-airflow
+  #   url: https://airflow.apache.org
   - name: ingress-nginx
     url: https://kubernetes.github.io/ingress-nginx
   - name: strimzi
@@ -35,51 +35,51 @@ releases:
           - k8s/kafka-namespace.yaml
   # ────────────────────────────────────────
   # 2) Apache Airflow
-  - name: airflow
-    namespace: kafka-kube-ml
-    chart: apache-airflow/airflow
-    version: 1.18.0
-    values:
-      - extraEnv: |
-          - name: AIRFLOW_VAR_NAMESPACE
-            value: "{{ .Namespace }}"
-          - name: KAFKA_BROKER
-            value: kafka-cluster-kafka-bootstrap.kafka-stream:9092
-          - name: KAFKA_TOPIC
-            value: user-interactions
-          - name: PARQUET_DIR 
-            value: /data/parquet
-          - name: BATCH_SIZE 
-            value: "100"
-      - k8s/airflow/values.yaml
-      - scheduler:
-          enabled: true
-        worker:
-          enabled: true
-        triggerer:
-          enabled: true
-    hooks:
-      - events: ["presync"]
-        showlogs: true
-        command: kubectl
-        args:
-          - apply
-          - -f
-          - k8s/airflow/airflow-dags-pvc.yaml
-          - -n
-          - kafka-kube-ml
-      - events: ["postsync"]
-        showlogs: true
-        command: kubectl
-        args:
-          - patch
-          - ingress
-          - airflow-ingress
-          - -n
-          - kafka-kube-ml
-          - --type=json
-          - -p
-          - '[{"op": "add", "path": "/spec/ingressClassName", "value":"nginx"}]'
+    # - name: airflow
+    #   namespace: kafka-kube-ml
+    #   chart: apache-airflow/airflow
+    #   version: 1.18.0
+    #   values:
+    #     - extraEnv: |
+    #         - name: AIRFLOW_VAR_NAMESPACE
+    #           value: "{{ .Namespace }}"
+    #         - name: KAFKA_BROKER
+    #           value: kafka-cluster-kafka-bootstrap.kafka-stream.svc:9092
+    #         - name: KAFKA_TOPIC
+    #           value: user-interactions
+    #         - name: PARQUET_DIR 
+    #           value: /data/parquet
+    #         - name: BATCH_SIZE 
+    #           value: "100"
+    #     - k8s/airflow/values.yaml
+    #     - scheduler:
+    #         enabled: true
+    #       worker:
+    #         enabled: true
+    #       triggerer:
+    #         enabled: true
+    #   hooks:
+    #     - events: ["presync"]
+    #       showlogs: true
+    #       command: kubectl
+    #       args:
+    #         - apply
+    #         - -f
+    #         - k8s/airflow/airflow-dags-pvc.yaml
+    #         - -n
+    #         - kafka-kube-ml
+    #     - events: ["postsync"]
+    #       showlogs: true
+    #       command: kubectl
+    #       args:
+    #         - patch
+    #         - ingress
+    #         - airflow-ingress
+    #         - -n
+    #         - kafka-kube-ml
+    #         - --type=json
+    #         - -p
+    #         - '[{"op": "add", "path": "/spec/ingressClassName", "value":"nginx"}]'
   # ────────────────────────────────────────
   # 3) Strimzi Kafka Operator
   - name: kafka-operator
@@ -94,52 +94,59 @@ releases:
         args:
           - apply
           - -f
-          - k8s/kafka/kafka-cluster.yaml
+          # - k8s/kafka/kafka-cluster.yaml
+          - k8s/kafka/kraft/kafka-cluster.yaml
           - -n
           - kafka-stream
-  # ────────────────────────────────────────
-  # 4) Kubernetes Dashboard
-  - name: kubernetes-dashboard
-    namespace: kubernetes-dashboard
-    chart: kubernetes-dashboard/kubernetes-dashboard
-    version: 6.0.8
-    createNamespace: true
-    values:
-      - fullnameOverride: dashboard
-      - serviceAccount:
-          create: true
-          name: admin-user
-      - ingress:
-          enabled: true
-          annotations:
-            nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-          hosts:
-            - dashboard.local
-          paths:
-            - /
-          pathType: Prefix
-      - extraArgs:
-          - --enable-skip-login
-          - --enable-insecure-login
-      - protocolHttp: false
-      - protocolHttps: true
-    hooks:
-      - events: ["postsync"]
+      - events: ["postsync"]            # <-- apply the topic after operator/cluster
         showlogs: true
         command: kubectl
         args:
-          - create
-          - clusterrolebinding
-          - admin-user
-          - --clusterrole=cluster-admin
-          - --serviceaccount=kubernetes-dashboard:admin-user
+          - apply
+          - -f
+          - k8s/kafka/kafkatopic-user-interactions.yaml
+          - -n
+          - kafka-stream
   # 5) PVC for Kafka Consumer
-  # This step ensures the PVC is created for the Python Kafka Consumer to write parquet files.
-  # - name: consumer-parquet-pvc
-  #   namespace: kafka-kube-ml
-  #   chart: "bitnami/common" # dummy chart just to run the hook, won't actually install anything
-  #   version: 2.7.1
-  #   disableValidationOnInstall: true
+  - name: stream-processor
+    namespace: kafka-kube-ml
+    chart: ./k8s/charts/stream-processor
+    values:
+      # - image:
+      #     repository: awesomeplant/stream_processor
+      #     tag: latest
+      - flushIntervalSeconds: 5
+      - batchSize: 50
+      - output:
+          tmpDir: /tmp
+    hooks:
+      - events: ["presync"]
+        command: sh
+        args:
+          - -c
+          - |
+            set -e
+            kubectl -n kafka-stream wait --for=condition=Ready kafka/kafka-cluster --timeout=10m
+            until kubectl -n kafka-stream get svc kafka-cluster-kafka-bootstrap >/dev/null 2>&1; do sleep 3; done
+  - name: user-simulator
+    namespace: kafka-kube-ml
+    chart: ./k8s/charts/user-simulator
+    values:
+      - generator:
+          rate: 100
+          metricsPort: 8000
+        kafka:
+          brokers: kafka-cluster-kafka-bootstrap.kafka-stream.svc:9092
+          topic: user-interactions
+    hooks:
+      - events: ["presync"]
+        command: sh
+        args:
+          - -c
+          - |
+            set -e
+            kubectl -n kafka-stream wait --for=condition=Ready kafka/kafka-cluster --timeout=10m
+            until kubectl -n kafka-stream get svc kafka-cluster-kafka-bootstrap >/dev/null 2>&1; do sleep 3; done
 hooks:
   - events: ["prepare"]
     showlogs: true

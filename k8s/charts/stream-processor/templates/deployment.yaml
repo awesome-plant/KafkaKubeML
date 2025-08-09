@@ -1,0 +1,78 @@
+# charts/stream_processor/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stream-processor
+  namespace: {{ .Release.Namespace }}
+  labels: { app: consumer }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: consumer }
+  template:
+    metadata:
+      labels: { app: consumer }
+    spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvc.claimName }}
+        - name: tmp
+          emptyDir: {}
+      initContainers:
+        # - name: wait-for-kafka
+        #   image: busybox:1.36
+        #   command: ["sh","-c"]
+        #   args:
+        #     - |
+        #       set -e
+        #       until nslookup kafka-cluster-kafka-bootstrap.kafka-stream.svc; do
+        #         echo "waiting for DNS…"; sleep 3
+        #       done
+        #       # Optional: also wait for port
+        #       until nc -z kafka-cluster-kafka-bootstrap.kafka-stream.svc 9092; do
+        #         echo "waiting for broker…"; sleep 3
+        #       done
+        - name: preflight-tests
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          workingDir: /app
+          env:
+            - name: PYTHONPATH
+              value: /app/src
+          command: ["sh","-c"]
+          args:
+            - |
+              echo "[preflight] running smoke tests…"
+              pytest -q
+      containers:
+        - name: consumer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: consumer-config
+          env:
+            - name: PARQUET_DIRS
+              value: /data/parquet
+            - name: TMP_DIR
+              value: /data/tmp
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu | quote }}
+              memory: {{ .Values.resources.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+              memory: {{ .Values.resources.limits.memory | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true

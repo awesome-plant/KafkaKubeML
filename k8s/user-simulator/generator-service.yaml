@@ -1,0 +1,16 @@
+# k8s/generator/generator-service.yaml  (optional: metrics/health)
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-simulator
+  namespace: kafka-kube-ml
+  labels: 
+    app: user-simulator
+spec:
+  selector: 
+    app: user-simulator
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+  type: ClusterIP

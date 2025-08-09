@@ -1,0 +1,7 @@
+# charts/user-simulator/Chart.yaml
+apiVersion: v2
+name: user-simulator
+description: Kafka user event generator
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

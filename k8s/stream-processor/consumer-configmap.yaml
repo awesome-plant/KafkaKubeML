@@ -1,0 +1,36 @@
+# k8s/consumer/consumer-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: consumer-config
+  namespace: kafka-kube-ml
+data:
+  # Kafka
+  KAFKA_BROKERS: "kafka-cluster-kafka-bootstrap.kafka-stream.svc:9092"
+  KAFKA_TOPIC: "user-interactions"
+  GROUP_ID: "parquet-consumer-group"
+
+  # Output layout (PVC mounted at /data)
+  DATASET_NAME: "user_interactions"
+  PARQUET_DIRS: "/data/bronze"                  # <-- target directory on the PVC
+  TMP_DIR: "/data/tmp"
+  PARQUET_COMPRESSION: "snappy"
+  FILE_NAMING: "spark"                           # spark|simple
+  PARTITION_GRANULARITY: "minute"                # hour|minute
+
+  # Chunking / sizes
+  TARGET_FILE_SIZE_MIB: "192"
+  MAX_FILES_PER_PARTITION: "4"
+  MAX_ROWS_PER_FILE: "0"
+  COMPRESSION_FACTOR: "0.45"
+
+  # Flush controls (write frequency knob)
+  BATCH_SIZE: "1000"
+  FLUSH_INTERVAL_SECONDS: "15"                   # <-- write at least every X seconds
+
+  # Optional run tagging
+  RUN_ID: ""
+
+  # DLQ (optional)
+  # DLQ_BROKERS: ""
+  # DLQ_TOPIC: ""

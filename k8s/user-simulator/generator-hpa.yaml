@@ -1,0 +1,20 @@
+# k8s/generator/generator-hpa.yaml  (CPU-based autoscaling)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: user-simulator-hpa
+  # namespace: kafka-kube-ml
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: user-simulator
+  minReplicas: 1
+  maxReplicas: 4           # cap for a single desktop; raise as needed
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65

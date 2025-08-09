@@ -1,0 +1,14 @@
+# k8s/kafka/kafkatopic-user-interactions.yaml  (Strimzi, optional)
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: user-interactions
+  namespace: kafka-stream
+  labels:
+    strimzi.io/cluster: kafka-cluster         # must match your Kafka cluster name
+spec:
+  partitions: 12                               # ≥ max consumer replicas
+  replicas: 1                                  # local single-node
+  config:
+    retention.ms: 604800000                    # 7 days
+    segment.bytes: 134217728                   # 128 MiB

@@ -1,0 +1,9 @@
+# k8s/charts/stream_processor/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: consumer-config
+data:
+  FLUSH_INTERVAL_SECONDS: "{{ .Values.flushIntervalSeconds }}"
+  BATCH_SIZE: "{{ .Values.batchSize }}"
+  TMP_DIR: "{{ .Values.output.tmpDir }}"

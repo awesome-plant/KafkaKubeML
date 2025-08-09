@@ -1,0 +1,25 @@
+# charts/stream_processor/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: consumer-config
+  namespace: {{ .Release.Namespace }}
+data:
+  KAFKA_BROKERS: "{{ .Values.kafka.brokers }}"
+  KAFKA_TOPIC: "{{ .Values.kafka.topic }}"
+  GROUP_ID: "{{ .Values.kafka.groupId }}"
+  AUTO_OFFSET_RESET: "{{ .Values.kafka.autoOffsetReset }}"
+
+  DATASET_NAME: "{{ .Values.output.datasetName }}"
+  PARQUET_DIRS: "{{ .Values.output.parquetDirs }}"
+  TMP_DIR: "{{ .Values.output.tmpDir }}"
+  PARQUET_COMPRESSION: "{{ .Values.output.compression }}"
+  FILE_NAMING: "{{ .Values.output.fileNaming }}"
+  PARTITION_GRANULARITY: "{{ .Values.output.partitionGranularity }}"
+  TARGET_FILE_SIZE_MIB: "{{ .Values.output.targetMiB }}"
+  MAX_FILES_PER_PARTITION: "{{ .Values.output.maxFilesPerPartition }}"
+  MAX_ROWS_PER_FILE: "{{ .Values.output.maxRowsPerFile }}"
+  COMPRESSION_FACTOR: "{{ .Values.output.compressionFactor }}"
+
+  BATCH_SIZE: "{{ .Values.batchSize }}"
+  FLUSH_INTERVAL_SECONDS: "{{ .Values.flushIntervalSeconds }}"

@@ -1,0 +1,50 @@
+# k8s/consumer/consumer-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer
+  namespace: kafka-kube-ml
+  labels: { app: consumer }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: consumer }
+  template:
+    metadata:
+      labels: { app: consumer }
+    spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: consumer-parquet-pvc      # <-- your existing PVC
+        - name: tmp
+          emptyDir: {}
+      containers:
+        - name: consumer
+          image: awesomeplant/stream_processor:latest   # <-- set your image
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: consumer-config
+          env:
+            - name: TMPDIR
+              value: /tmp
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true

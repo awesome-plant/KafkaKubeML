@@ -1,0 +1,18 @@
+# charts/user-simulator/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-simulator-config
+  namespace: {{ .Release.Namespace }}
+data:
+  KAFKA_BROKERS: "{{ .Values.kafka.brokers }}"
+  KAFKA_TOPIC: "{{ .Values.kafka.topic }}"
+  RATE: "{{ .Values.generator.rate }}"
+  BATCH_NUM_MESSAGES: "{{ .Values.generator.batchSize }}"
+  PAYLOAD_BYTES: "{{ .Values.generator.payloadBytes }}"
+  KEY_PREFIX: "{{ .Values.generator.keyPrefix }}"
+  LOG_LEVEL: "{{ .Values.generator.logLevel }}"
+  METRICS_PORT: "{{ .Values.generator.metricsPort }}"
+  CREATE_TOPIC: "{{ ternary "true" "false" .Values.generator.createTopic }}"
+  TOPIC_PARTITIONS: "{{ .Values.generator.topicPartitions }}"
+  TOPIC_REPLICATION: "{{ .Values.generator.topicReplication }}"

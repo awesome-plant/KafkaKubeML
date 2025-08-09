@@ -1,0 +1,11 @@
+# k8s/generator/generator-pdb.yaml  (keep at least 1 during node drains)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: user-simulator-pdb
+  # namespace: kafka-kube-ml
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: user-simulator

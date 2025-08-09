@@ -1,0 +1,37 @@
+# charts/stream_processor/values.yaml
+image:
+  repository: awesomeplant/stream_processor
+  tag: latest
+  pullPolicy: IfNotPresent
+
+flushIntervalSeconds: 5        # <-- write every X seconds
+batchSize: 50
+
+kafka:
+  brokers: kafka-cluster-kafka-bootstrap.kafka-stream.svc:9092
+  topic: user-interactions
+  groupId: parquet-consumer-group
+  autoOffsetReset: earliest
+
+output:
+  datasetName: user_interactions
+  parquetDirs: /data/bronze
+  tmpDir: /tmp
+  compression: snappy
+  fileNaming: spark
+  partitionGranularity: minute
+  targetMiB: 192
+  maxFilesPerPartition: 4
+  maxRowsPerFile: 0
+  compressionFactor: 0.45
+
+pvc:
+  claimName: consumer-parquet-pvc
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "2"
+    memory: "4Gi"

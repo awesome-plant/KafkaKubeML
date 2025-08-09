@@ -1,98 +1,53 @@
 # tests/integration/test_kafka_end_to_end.py
+import json, time, uuid, pytest
+ck = pytest.importorskip("confluent_kafka", reason="confluent-kafka not installed")
+from confluent_kafka import Producer, Consumer
 
-import pytest
-import time
-import uuid
-import json
-from kafka import KafkaConsumer, TopicPartition
-from kafka.errors import KafkaError
-from kafka.admin import KafkaAdminClient, NewTopic
-from user_simulator.kafka_client import create_kafka_producer, send_event, wait_for_topic, ensure_topic_exists
-import os
+from user_simulator.generator import make_event, key_for_event
+from user_simulator.producer import build_producer
 
-brokers = os.environ.get("KAFKA_BROKER")
-topic = os.environ.get("KAFKA_TOPIC")
-# brokers = "kafka-cluster-kafka-bootstrap.kafka-stream:9092"
+pytestmark = pytest.mark.integration
 
-@pytest.fixture(scope="module")
-def test_topic():
-    """Create a unique topic name for testing."""
-    return f"test-user-events-{uuid.uuid4()}"
-
-@pytest.fixture(scope="module")
-def sample_event():
-    """Create a reproducible sample event."""
-    return {
-        "user_id": str(uuid.uuid4()),
-        "event_type": "integration_test",
-        "timestamp": int(time.time()),
-        "url": "https://example.com/test",
-        "product_id": str(uuid.uuid4()),
-        "user_agent": "pytest"
-    }
-
-@pytest.fixture(scope="module")
-def test_topic():
-    import uuid
-    topic = f"test-user-events-{uuid.uuid4()}"
-    admin_client = KafkaAdminClient(bootstrap_servers=brokers)
-    topic_obj = NewTopic(name=topic, num_partitions=1, replication_factor=1)
+def _consume_one(brokers, topic, target_event_id, timeout_s=20):
+    c = Consumer({
+        "bootstrap.servers": brokers,
+        "group.id": f"it-consumer-{uuid.uuid4().hex[:8]}",
+        "auto.offset.reset": "earliest",
+        "enable.auto.commit": False,
+    })
+    c.subscribe([topic])
+    end = time.time() + timeout_s
+    found = None
     try:
-        admin_client.create_topics([topic_obj])
-        print(f"Created topic {topic}")
-    except Exception as e:
-        print(f"Error creating topic: {e}")
-    admin_client.close()
-    return topic
+        while time.time() < end:
+            msg = c.poll(1.0)
+            if msg is None or msg.error():
+                continue
+            try:
+                evt = json.loads(msg.value().decode("utf-8"))
+                if evt.get("event_id") == target_event_id:
+                    found = evt
+                    break
+            except Exception:
+                continue
+    finally:
+        c.close()
+    return found
 
-def test_produce_message(test_topic, sample_event):
-    """Test producing a message to Kafka."""
-    producer = create_kafka_producer(brokers)
-    send_event(producer, test_topic, sample_event)
-    producer.flush()
-    producer.close()
-    time.sleep(3)
-
-def test_topic_available(test_topic):
-    """Test topic becomes available after producing."""
-    admin_client = KafkaAdminClient(bootstrap_servers=brokers)
-    topics = admin_client.list_topics()
-    print("Available topics:", topics)
-    wait_for_topic(admin_client, test_topic, timeout=30)
-    admin_client.close()
-
-def test_consume_message(test_topic, sample_event):
-    """Test consuming the produced message from Kafka."""
-    # Wait for message to be available
-    # time.sleep(30)
-    ensure_topic_exists(brokers, test_topic)
-    consumer = KafkaConsumer(
-        test_topic,
-        bootstrap_servers=brokers,
-        group_id=f"debug-group-{uuid.uuid4()}",
-        auto_offset_reset='earliest',
-        value_deserializer=lambda m: m.decode("utf-8"),
-        consumer_timeout_ms=10000,
+def test_produce_and_consume_roundtrip(brokers, test_topic):
+    # Build producer (librdkafka) and send one event
+    p: Producer = build_producer(
+        brokers=brokers, linger_ms=10, batch_num_messages=1000, compression="snappy"
     )
-    found = False
-    while not consumer.assignment():
-        print("Waiting for assignment...")
-        consumer.poll(timeout_ms=100)
-        time.sleep(1)
-    
-    print(f"Assignment: {consumer.assignment()}")
-    for tp in consumer.assignment():
-        print(f"Partition {tp}: position {consumer.position(tp)}")
-        # Only seek to beginning if you want all old messages
-        consumer.seek_to_beginning(tp)
+    evt = make_event()
+    key = key_for_event(evt)
+    payload = json.dumps(evt)
+    # send + flush
+    p.produce(test_topic, key=key, value=payload)
+    p.flush(10)
 
-    for msg in consumer:
-        try:
-            event = json.loads(msg.value)
-            if event.get("user_id") == sample_event["user_id"]:
-                found = True
-                break
-        except Exception:
-            continue
-    consumer.close()
-    assert found, "Produced event was not found in Kafka topic."
+    got = _consume_one(brokers, test_topic, evt["event_id"], timeout_s=30)
+    assert got is not None, "Did not consume the produced event"
+    # basic shape checks
+    assert got["event_id"] == evt["event_id"]
+    assert "user_id" in got and "event_ts" in got and "event_type" in got

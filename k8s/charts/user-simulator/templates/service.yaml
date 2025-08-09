@@ -1,0 +1,14 @@
+# charts/user-simulator/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-simulator
+  namespace: {{ .Release.Namespace }}
+  labels: { app: user-simulator }
+spec:
+  selector: { app: user-simulator }
+  ports:
+    - name: http
+      port: {{ .Values.generator.metricsPort }}
+      targetPort: http
+  type: ClusterIP
